@@ -69,15 +69,11 @@ def freerun():
             features.SendTexture.value = True
             features.SendPointCloud.value = True
             features.SendNormalMap.value = False
-            features.SendDepthMap.value = False
+            features.SendDepthMap.value = True
             features.SendConfidenceMap.value = False
 
             ia.start()
-            
-            # vis = o3d.visualization.Visualizer()
-            # vis.create_window(width=800,height=600)
             pcd = o3d.geometry.PointCloud()
-            # vis.add_geometry(pcd)
             
             while True:
                 with ia.fetch(timeout=10.0) as buffer:
@@ -88,32 +84,43 @@ def freerun():
                     point_cloud_component = payload.components[2]
                     if point_cloud_component.width > 0 and point_cloud_component.height > 0:
                         pointcloud = point_cloud_component.data.reshape(point_cloud_component.height * point_cloud_component.width, 3).copy()
-                        print(pointcloud)
+                        # print(pointcloud)
                     else:
                         print("PointCloud is empty!")
                     # pcd.points = o3d.utility.Vector3dVector(pointcloud)
                     
+                    texture_grey_component = payload.components[0]
                     texture_rgb_component = payload.components[1]
-                    if texture_rgb_component.width > 0 and texture_rgb_component.height > 0:
-                        texture_rgb = np.zeros((point_cloud_component.height * point_cloud_component.width, 3))
-                        texture = texture_rgb_component.data.reshape(texture_rgb_component.height, texture_rgb_component.width, 3).copy()
+                    texture = np.zeros((texture_grey_component.height, texture_grey_component.width))
+                    texture_rgb = np.zeros((point_cloud_component.height * point_cloud_component.width, 3))
+                    if texture_grey_component.width > 0 and texture_grey_component.height > 0:
+                        texture = texture_grey_component.data.reshape(texture_grey_component.height, texture_grey_component.width, 1).copy()
+                        texture_rgb[:, 0] = np.reshape(1/65536 * texture, -1)
+                        texture_rgb[:, 1] = np.reshape(1/65536 * texture, -1)
+                        texture_rgb[:, 2] = np.reshape(1/65536 * texture, -1)
                         
+                        # texture_rgb[:, 0] = np.reshape(texture, -1)
+                        # texture_rgb[:, 1] = np.reshape(texture, -1)
+                        # texture_rgb[:, 2] = np.reshape(texture, -1)
+                    elif texture_rgb_component.width > 0 and texture_rgb_component.height > 0:
+                        texture = texture_rgb_component.data.reshape(texture_rgb_component.height, texture_rgb_component.width, 3).copy()
                         texture_rgb[:, 0] = np.reshape(1/65536 * texture[:, :, 0], -1)
                         texture_rgb[:, 1] = np.reshape(1/65536 * texture[:, :, 1], -1)
                         texture_rgb[:, 2] = np.reshape(1/65536 * texture[:, :, 2], -1)
-                        
-                        texture_rgb = cv2.normalize(texture_rgb, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-                        print(texture_rgb)
                     else:
                         print("TextureRGB is empty!")
-                    # pcd.colors = o3d.utility.Vector3dVector(texture_rgb)
+                    max_value = np.max(texture_rgb)
+                    print(max_value)
                     
-                    # vis.update_geometry(pcd)
-                    # vis.poll_events()
-                    # vis.update_renderer()
-                    time.sleep(1/9)
-                    # vis.clear_geometries
-                    # time.sleep(0.5)
+                    index_of_max = np.argmax(texture_rgb)
+                    row = index_of_max // texture_rgb.shape[1]
+                    col = index_of_max % texture_rgb.shape[1]
+                    
+                    print("Position at row:", row, "col:", col)
+                    print(texture.dtype)
+                    
+                    time.sleep(10)
+
 
 if __name__ == "__main__":
     freerun()
