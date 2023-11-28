@@ -85,10 +85,6 @@ def freerun():
                     texture_rgb = np.zeros((point_cloud_component.height * point_cloud_component.width, 3))
                     if texture_grey_component.width > 0 and texture_grey_component.height > 0:
                         texture = texture_grey_component.data.reshape(texture_grey_component.height, texture_grey_component.width, 1).copy()
-                        # texture_rgb[:, 0] = np.reshape(1/65536 * texture, -1)
-                        # texture_rgb[:, 1] = np.reshape(1/65536 * texture, -1)
-                        # texture_rgb[:, 2] = np.reshape(1/65536 * texture, -1)
-                        
                         texture_rgb[:, 0] = np.reshape(texture, -1)
                         texture_rgb[:, 1] = np.reshape(texture, -1)
                         texture_rgb[:, 2] = np.reshape(texture, -1)
@@ -115,7 +111,7 @@ def freerun():
                     texture_greyscale_1st[np.all(pointcloud_1st_edition == 0, axis = 1)] = 0
                     
                     texture_greyscale_2nd = texture_greyscale_1st
-                    texture_greyscale_2nd[(texture_greyscale_2nd[: , 0] > 300)] = 0 #Filt with greyscale channel information
+                    texture_greyscale_2nd[(texture_greyscale_2nd[: , 0] > 250)] = 0 #Filt with greyscale channel information
                     second_filtered_points = np.sum(np.any(texture_greyscale_2nd != 0, axis=1))
                     print("There are:", second_filtered_points , "points after 2nd filtration")
                     
@@ -141,27 +137,42 @@ def freerun():
                     
                     pointcloud_non_zero_x = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 0] != 0][: , 0]
                     x_min = np.min(pointcloud_non_zero_x)
+                    pointcloud_non_zero_y = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 1] != 0][: , 1]
+                    y_min = np.min(pointcloud_non_zero_y)
                     pointcloud_non_zero_z = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 2] != 0][: , 2]
                     z_min = np.min(pointcloud_non_zero_z)
-                    print("x_max:", x_max, "\nx_min:", x_min, "\nz_max:", z_max, "\nz_min", z_min)
+                    print("x_max:", x_max, "\nx_min:", x_min, "\ny_min:", y_min, "\nz_max:", z_max, "\nz_min", z_min)
                     
-                    point_x_max = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 0] == x_max]
-                    point_x_min = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 0] == x_min]
-                    point_z_max = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 2] == z_max]
-                    point_z_min = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 2] == z_min]
-                    print("Point_x_max:", point_x_max, "\nPoint_x_min:", point_x_min, "\nPoint_z_max:", point_z_max, "\nPoint_z_min:", point_z_min)
+                    # point_x_max = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 0] == x_max]
+                    # point_x_min = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 0] == x_min]
+                    # point_z_max = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 2] == z_max]
+                    # point_z_min = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 2] == z_min]
+                    # print("Point_x_max:", point_x_max, "\nPoint_x_min:", point_x_min, "\nPoint_z_max:", point_z_max, "\nPoint_z_min:", point_z_min)
                     
+                    target_point_lower_left = np.array([x_max, y_min, z_min])
+                    target_point_upper_left = np.array([x_min, y_min, z_min])
+                    target_point_lower_right = np.array([x_max, y_min, z_max])
+                    target_point_upper_right = np.array([x_min, y_min, z_max])
                     
-                    # max_value = np.max(texture_rgb)
-                    # print(max_value)
+                    distance_lower_left = np.linalg.norm(pointcloud_2nd_edition - target_point_lower_left, axis=1)
+                    nearest_index_lower_left = np.argmin(distance_lower_left)
+                    nearest_point_lower_left = pointcloud_2nd_edition[nearest_index_lower_left]
                     
-                    # index_of_max = np.argmax(texture_rgb)
-                    # row = index_of_max // texture_rgb.shape[1]
-                    # col = index_of_max % texture_rgb.shape[1]
+                    distance_upper_left = np.linalg.norm(pointcloud_2nd_edition - target_point_upper_left, axis=1)
+                    nearest_index_upper_left = np.argmin(distance_upper_left)
+                    nearest_point_upper_left = pointcloud_2nd_edition[nearest_index_upper_left]
                     
-                    # print("Position at row:", row, "col:", col)
-                    # print(texture.dtype)
+                    distance_lower_right = np.linalg.norm(pointcloud_2nd_edition - target_point_lower_right, axis=1)
+                    nearest_index_lower_right = np.argmin(distance_lower_right)
+                    nearest_point_lower_right = pointcloud_2nd_edition[nearest_index_lower_right]
                     
+                    distance_upper_right = np.linalg.norm(pointcloud_2nd_edition - target_point_upper_right, axis=1)
+                    nearest_index_upper_right = np.argmin(distance_upper_right)
+                    nearest_point_upper_right = pointcloud_2nd_edition[nearest_index_upper_right]                    
+                    print("Lower_Left: Target_point:", target_point_lower_left, "Nearest_Point", nearest_point_lower_left)
+                    print("Upper_Left: Target_point:", target_point_upper_left, "Nearest_Point", nearest_point_upper_left)
+                    print("Lower_right: Target_point:", target_point_lower_right, "Nearest_Point", nearest_point_lower_right)
+                    print("Upper_right: Target_point:", target_point_upper_right, "Nearest_Point", nearest_point_upper_right)
                     
                     time.sleep(100)
 
