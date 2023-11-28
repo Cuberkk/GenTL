@@ -5,19 +5,8 @@ import os
 import sys
 from sys import platform
 from harvesters.core import Harvester
+import threading
 import time
-
-def display_pointcloud(pointcloud_comp):
-    if pointcloud_comp.width == 0 or pointcloud_comp.height == 0:
-        print("PointCloud is empty!")
-        return
-    
-    # Reshape for Open3D visualization to N x 3 arrays
-    pointcloud = pointcloud_comp.data.reshape(pointcloud_comp.height * pointcloud_comp.width, 3).copy()
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pointcloud)
-    o3d.visualization.draw_geometries([pcd], width=800,height=600)
-    return
 
 def freerun():
     # PhotoneoTL_DEV_<ID>
@@ -73,7 +62,7 @@ def freerun():
             features.SendConfidenceMap.value = False
 
             ia.start()
-            pcd = o3d.geometry.PointCloud()
+            # pcd = o3d.geometry.PointCloud()
             
             while True:
                 with ia.fetch(timeout=10.0) as buffer:
@@ -113,24 +102,54 @@ def freerun():
                         
                     #First filtration using Point Cloud Data
                     pointcloud_1st_edition = pointcloud
-                    pointcloud_1st_edition[np.logical_or(pointcloud_1st_edition[: , 0] < 48.5 , pointcloud_1st_edition[: , 0] > 59.5)] = 0 #Filt with X position data
-                    pointcloud_1st_edition[np.logical_or(pointcloud_1st_edition[: , 1] < 131.5 , pointcloud_1st_edition[: , 1] > 136.5)] = 0 #Filt with Y position data
-                    pointcloud_1st_edition[np.logical_or(pointcloud_1st_edition[: , 2] < 88.5 , pointcloud_1st_edition[: , 2] > 104.5)] = 0 #Filt with Z position data
+                    pointcloud_1st_edition[np.logical_or(pointcloud_1st_edition[: , 0] < 45 , pointcloud_1st_edition[: , 0] > 65)] = 0 #Filt with X position data
+                    pointcloud_1st_edition[np.logical_or(pointcloud_1st_edition[: , 1] < 130 , pointcloud_1st_edition[: , 1] > 140)] = 0 #Filt with Y position data
+                    pointcloud_1st_edition[np.logical_or(pointcloud_1st_edition[: , 2] < 85, pointcloud_1st_edition[: , 2] > 110)] = 0 #Filt with Z position data
                     
                     # filtered_points = pointcloud[np.any(pointcloud != 0, axis=1)]
                     first_filtered_points = np.sum(np.any(pointcloud_1st_edition != 0, axis=1))
                     print("There are:", first_filtered_points, "points after 1st filtration")
                     
                     #2nd filtration using Greyscale Channel Information
-                    texture_greyscale = texture_rgb
-                    texture_greyscale[np.all(pointcloud_1st_edition == 0, axis = 1)] = 0
-                    texture_greyscale[(texture_greyscale[: , 0] > 400)] = 0 #Filt with greyscale channel information
-                    second_filtered_points = np.sum(np.any(texture_greyscale != 0, axis=1))
+                    texture_greyscale_1st = texture_rgb
+                    texture_greyscale_1st[np.all(pointcloud_1st_edition == 0, axis = 1)] = 0
+                    
+                    texture_greyscale_2nd = texture_greyscale_1st
+                    texture_greyscale_2nd[(texture_greyscale_2nd[: , 0] > 300)] = 0 #Filt with greyscale channel information
+                    second_filtered_points = np.sum(np.any(texture_greyscale_2nd != 0, axis=1))
                     print("There are:", second_filtered_points , "points after 2nd filtration")
                     
-                    #Display the selected points
+                    #Visualize the filtered points
                     pointcloud_2nd_edition = pointcloud_1st_edition
-                    pointcloud_2nd_edition[np.all(texture_grey_component == 0, axis=1)] = 0
+                    pointcloud_2nd_edition[np.all(texture_greyscale_2nd == 0, axis=1)] = 0
+                    
+                    # pcd1 = o3d.geometry.PointCloud()
+                    # pcd1.points = o3d.utility.Vector3dVector(pointcloud_1st_edition)
+                    # texture_visual = cv2.normalize(1/65536 * texture_greyscale_1st, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+                    # pcd1.colors = o3d.utility.Vector3dVector(texture_visual)
+                    # o3d.visualization.draw_geometries([pcd1], width=800,height=600)
+                    
+                    pcd2 = o3d.geometry.PointCloud()
+                    pcd2.points = o3d.utility.Vector3dVector(pointcloud_2nd_edition)
+                    texture_visual = cv2.normalize(1/65536 * texture_greyscale_2nd, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+                    pcd2.colors = o3d.utility.Vector3dVector(texture_visual)
+                    o3d.visualization.draw_geometries([pcd2], width=800,height=600)
+                    
+                    #Select 4 vertexes
+                    x_max = np.max(pointcloud_2nd_edition[: , 0])
+                    z_max = np.max(pointcloud_2nd_edition[: , 2])
+                    
+                    pointcloud_non_zero_x = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 0] != 0][: , 0]
+                    x_min = np.min(pointcloud_non_zero_x)
+                    pointcloud_non_zero_z = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 2] != 0][: , 2]
+                    z_min = np.min(pointcloud_non_zero_z)
+                    print("x_max:", x_max, "\nx_min:", x_min, "\nz_max:", z_max, "\nz_min", z_min)
+                    
+                    point_x_max = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 0] == x_max]
+                    point_x_min = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 0] == x_min]
+                    point_z_max = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 2] == z_max]
+                    point_z_min = pointcloud_2nd_edition[pointcloud_2nd_edition[: , 2] == z_min]
+                    print("Point_x_max:", point_x_max, "\nPoint_x_min:", point_x_min, "\nPoint_z_max:", point_z_max, "\nPoint_z_min:", point_z_min)
                     
                     
                     # max_value = np.max(texture_rgb)
