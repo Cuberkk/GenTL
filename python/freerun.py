@@ -125,11 +125,11 @@ def freerun():
                     # pcd1.colors = o3d.utility.Vector3dVector(texture_visual)
                     # o3d.visualization.draw_geometries([pcd1], width=800,height=600)
                     
-                    pcd2 = o3d.geometry.PointCloud()
-                    pcd2.points = o3d.utility.Vector3dVector(pointcloud_2nd_edition)
-                    texture_visual = cv2.normalize(1/65536 * texture_greyscale_2nd, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-                    pcd2.colors = o3d.utility.Vector3dVector(texture_visual)
-                    o3d.visualization.draw_geometries([pcd2], width=800,height=600)
+                    # pcd2 = o3d.geometry.PointCloud()
+                    # pcd2.points = o3d.utility.Vector3dVector(pointcloud_2nd_edition)
+                    # texture_visual = cv2.normalize(1/65536 * texture_greyscale_2nd, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+                    # pcd2.colors = o3d.utility.Vector3dVector(texture_visual)
+                    # o3d.visualization.draw_geometries([pcd2], width=800,height=600)
                     
                     #Select 4 vertexes
                     x_max = np.max(pointcloud_2nd_edition[: , 0])
@@ -174,7 +174,7 @@ def freerun():
                     print("Lower_right: Target_point:", target_point_lower_right, "Nearest_Point", nearest_point_lower_right)
                     print("Upper_right: Target_point:", target_point_upper_right, "Nearest_Point", nearest_point_upper_right)
                     
-                    time.sleep(100)
+                    time.sleep(1)
 
 
 if __name__ == "__main__":
